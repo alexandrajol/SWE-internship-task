@@ -12,8 +12,8 @@ Pentru fiecare bug, scrie 2-3 propoziții:
 
 ### Bug #1
 - **Unde era:** 
-În fișierul main.py
-Linia 32
+În fișierul app\main.py
+Linia 32: @app.post("/events", response_model=Event)
 - **Cum l-am găsit:** 
 Am observat că testul test_create_event_returns_201 pică (assert 200 == 201).
 - **Cum l-am fixat:**
@@ -21,8 +21,12 @@ M-am uitat la diferențele dintre create_user și create_event și am observat c
 
 ### Bug #2
 - **Unde era:**
+În fișierul app\storage.py
+Linia 51: return all_events[offset + 1: offset + 1 + limit]
 - **Cum l-am găsit:**
+Citind codul, am observat că se adaugă 1 la offset. În plus, testul test_list_events_includes_created_items pica, și se vedea foarte clar că assertul așteaptă 5 elemente și primește doar 4.
 - **Cum l-am fixat:**
+Am eliminat ”+ 1” din ambele expresii din slicing -> all_events[offset : offset + limit].
 
 ### Bug #3
 - **Unde era:**
