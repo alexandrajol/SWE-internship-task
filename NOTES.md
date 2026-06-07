@@ -30,8 +30,13 @@ Am eliminat ”+ 1” din ambele expresii din slicing -> all_events[offset : off
 
 ### Bug #3
 - **Unde era:**
+În fișierul app\storage.py
+Linia 50: all_events = list(self._events.values())
+Și linia 55: if event is None:
 - **Cum l-am găsit:**
-- **Cum l-am fixat:**
+Mai multe teste picau (test_pagination_after_delete_stays_consistent, test_list_events_hides_soft_deleted_items) de unde mi-am dat seama că list_events nu lua în considerare dacă evenimentul a fost ”șters”. Faptul că testul test_delete_same_event_twice_changes_response pică, deoarece assertul așteaptă 404 și primește 204, semnalează că există o problemă asemănătoare la funcția de stergere a elementului, unde am realizat că nu este tratat deloc cazul de ștergere multiplă a unui eveniment, ceea ce e esențial în acest tip de aplicație în care elementele șterse rămân în același dicționar cu cele neșterse.
+- **Cum l-am fixat:** 
+M-am folosit de atributul ”deleted_at” pentru a filtra lista returnată -> list(event for event in self._events.values() if event.deleted_at is None). Pentru soft_delete_event, am adăugat o condiție pentru gestionarea cazului de ștergere multiplă -> dacă event.deleted_at is not None, returnează None (API-ul va returna 404).
 
 ---
 
