@@ -6,6 +6,8 @@ the failures point to the bugs you need to fix.
 Run with: pytest -v
 """
 
+import time
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -172,3 +174,82 @@ def test_pagination_after_delete_stays_consistent(client, user):
     assert len(page1_ids) == 3
     assert len(page2_ids) == 2
     assert set(page1_ids).isdisjoint(page2_ids), "Pages should not overlap"
+
+
+########################################
+### TESTS ADDED FOR THE NEW ENDPOINT ###
+########################################
+
+
+
+def test_get_user_events_returns_only_user_events(client, user):
+    user2_response = client.post(
+        "/users", json={"email": "bob@example.com", "name": "Bob"}
+    )
+    user2 = user2_response.json()
+
+    client.post(
+        "/events",
+        json={"user_id": user["id"], "event_type": "login", "metadata": {}},
+    )
+    client.post(
+        "/events",
+        json={"user_id": user2["id"], "event_type": "login", "metadata": {}},
+    )
+    client.post(
+        "/events",
+        json={"user_id": user["id"], "event_type": "logout", "metadata": {}},
+    )
+
+    response = client.get(f"/users/{user['id']}/events")
+    assert response.status_code == 200
+    events = response.json()
+    assert len(events) == 2
+    assert all(e["user_id"] == user["id"] for e in events)
+
+
+def test_get_user_events_with_missing_user_returns_404(client):
+    response = client.get("/users/9999/events")
+    assert response.status_code == 404
+
+
+def test_get_user_events_filters_by_since_parameter(client, user):
+    event1 = client.post(
+        "/events",
+        json={"user_id": user["id"], "event_type": "login", "metadata": {}},
+    ).json()
+
+    time.sleep(0.01)
+
+    event2 = client.post(
+        "/events",
+        json={"user_id": user["id"], "event_type": "logout", "metadata": {}},
+    ).json()
+
+    since = event1["created_at"]
+    response = client.get(f"/users/{user['id']}/events?since={since}")
+    assert response.status_code == 200
+    events = response.json()
+
+    assert len(events) == 1
+    assert events[0]["id"] == event2["id"]
+
+
+def test_get_user_events_hides_deleted_events(client, user):
+    event1 = client.post(
+        "/events",
+        json={"user_id": user["id"], "event_type": "login", "metadata": {}},
+    ).json()
+    event2 = client.post(
+        "/events",
+        json={"user_id": user["id"], "event_type": "logout", "metadata": {}},
+    ).json()
+
+    client.delete(f"/events/{event1['id']}")
+
+    response = client.get(f"/users/{user['id']}/events")
+    assert response.status_code == 200
+    events = response.json()
+
+    assert len(events) == 1
+    assert events[0]["id"] == event2["id"]
