@@ -3,6 +3,9 @@
 A small FastAPI service for tracking user activity events.
 """
 
+from datetime import datetime
+from typing import Optional
+
 from fastapi import FastAPI, HTTPException, Query
 
 from app.models import Event, EventCreate, User, UserCreate
@@ -51,3 +54,22 @@ def delete_event(event_id: int) -> None:
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
     return None
+
+
+@app.get("/users/{user_id}/events", response_model=list[Event])
+def get_user_events(
+    user_id: int,
+    since: Optional[str] = Query(None, description="ISO 8601 datetime filter"),
+) -> list[Event]:
+    user = storage.get_user(user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    since_dt = None
+    if since:
+        try:
+            since_dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format")
+
+    return storage.get_user_events(user_id, since_dt)
