@@ -253,3 +253,8 @@ def test_get_user_events_hides_deleted_events(client, user):
 
     assert len(events) == 1
     assert events[0]["id"] == event2["id"]
+
+
+def test_get_user_events_with_invalid_date_format_returns_400(client, user):
+    response = client.get(f"/users/{user['id']}/events?since=invalid-date")
+    assert response.status_code == 400
